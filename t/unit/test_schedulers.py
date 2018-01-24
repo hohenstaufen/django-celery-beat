@@ -10,13 +10,12 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory
 
 from celery.five import monotonic, text_t
-from celery.schedules import schedule, crontab, solar
+from celery.schedules import schedule, crontab
 
 from django_celery_beat import schedulers
 from django_celery_beat.admin import PeriodicTaskAdmin
 from django_celery_beat.models import (
-    PeriodicTask, PeriodicTasks, IntervalSchedule, CrontabSchedule,
-    SolarSchedule
+    PeriodicTask, PeriodicTasks, IntervalSchedule, CrontabSchedule
 )
 from django_celery_beat.utils import make_aware
 
@@ -71,10 +70,6 @@ class SchedulerCase:
         crontab.save()
         return self.create_model(crontab=crontab, **kwargs)
 
-    def create_model_solar(self, schedule, **kwargs):
-        solar = SolarSchedule.from_schedule(schedule)
-        solar.save()
-        return self.create_model(solar=solar, **kwargs)
 
     def create_conf_entry(self):
         name = 'thefoo{0}'.format(next(_ids))
@@ -198,10 +193,6 @@ class test_DatabaseScheduler(SchedulerCase):
         self.m3.save()
         self.m3.refresh_from_db()
 
-        self.m4 = self.create_model_solar(
-            solar('solar_noon', 48.06, 12.86))
-        self.m4.save()
-        self.m4.refresh_from_db()
 
         # disabled, should not be in schedule
         m5 = self.create_model_interval(
@@ -392,13 +383,7 @@ class test_models(SchedulerCase):
         ))
         assert text_t(p) == '{0}: * 4,5 4,5 * * (m/h/d/dM/MY)'.format(p.name)
 
-    def test_PeriodicTask_unicode_solar(self):
-        p = self.create_model_solar(
-            solar('solar_noon', 48.06, 12.86), name='solar_event'
-        )
-        assert text_t(p) == 'solar_event: {0} ({1}, {2})'.format(
-            'solar_noon', '48.06', '12.86'
-        )
+
 
     def test_PeriodicTask_schedule_property(self):
         p1 = self.create_model_interval(schedule(timedelta(seconds=10)))
@@ -436,26 +421,7 @@ class test_models(SchedulerCase):
         assert s.schedule.day_of_month == {1, 16}
         assert s.schedule.month_of_year == {1, 7}
 
-    def test_SolarSchedule_schedule(self):
-        s = SolarSchedule(event='solar_noon', latitude=48.06, longitude=12.86)
-        dt = datetime(day=26, month=7, year=2050, hour=1, minute=0)
-        dt_lastrun = make_aware(dt)
 
-        assert s.schedule is not None
-        isdue, nextcheck = s.schedule.is_due(dt_lastrun)
-        assert isdue is False  # False means task isn't due, but keep checking.
-        assert (nextcheck > 0) and (isdue is False) or \
-            (nextcheck == s.max_interval) and (isdue is True)
-
-        s2 = SolarSchedule(event='solar_noon', latitude=48.06, longitude=12.86)
-        dt2 = datetime(day=26, month=7, year=2000, hour=1, minute=0)
-        dt2_lastrun = make_aware(dt2)
-
-        assert s2.schedule is not None
-        isdue2, nextcheck2 = s2.schedule.is_due(dt2_lastrun)
-        assert isdue2 is True  # True means task is due and should run.
-        assert (nextcheck2 > 0) and (isdue2 is True) or \
-            (nextcheck2 == s2.max_interval) and (isdue2 is False)
 
 
 @pytest.mark.django_db()

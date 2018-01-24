@@ -19,8 +19,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from .models import (
     PeriodicTask, PeriodicTasks,
-    CrontabSchedule, IntervalSchedule,
-    SolarSchedule,
+    CrontabSchedule, IntervalSchedule
 )
 from .utils import make_aware
 
@@ -48,7 +47,6 @@ class ModelEntry(ScheduleEntry):
     model_schedules = (
         (schedules.crontab, CrontabSchedule, 'crontab'),
         (schedules.schedule, IntervalSchedule, 'interval'),
-        (schedules.solar, SolarSchedule, 'solar'),
     )
     save_fields = ['last_run_at', 'total_run_count', 'no_changes']
 
